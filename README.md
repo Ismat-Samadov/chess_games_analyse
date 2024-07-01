@@ -32,7 +32,7 @@ This repository contains a script for analyzing chess games from a PGN (Portable
 ## Usage
 
 1. **Update the PGN file path in the script:**
-   In `main.py`, replace `'path_to_your_pgn_file.pgn'` with the actual path to your PGN file.
+   In `main.py`, replace `'games.pgn'` with the actual path to your PGN file.
 
 2. **Run the script:**
    ```bash
