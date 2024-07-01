@@ -72,12 +72,13 @@ opening_draws = games_df[games_df['Result'] == '1/2-1/2']['Opening'].value_count
 # Time control analysis
 time_control_stats = games_df['TimeControl'].value_counts()
 
-# Plotting
+# Plotting and saving plots
 plt.figure(figsize=(10, 6))
 results.plot(kind='bar', title='Game Results')
 plt.xlabel('Result')
 plt.ylabel('Frequency')
-plt.show()
+plt.savefig('results.png')
+plt.close()
 
 plt.figure(figsize=(10, 6))
 white_rating_change.plot(label='White Elo', legend=True)
@@ -85,29 +86,39 @@ black_rating_change.plot(label='Black Elo', legend=True)
 plt.title('Rating Changes Over Time')
 plt.xlabel('Date')
 plt.ylabel('Elo Rating')
-plt.show()
+plt.savefig('rating_changes.png')
+plt.close()
 
 plt.figure(figsize=(10, 6))
 opening_stats.head(10).plot(kind='bar', title='Top 10 Openings')
 plt.xlabel('Opening')
 plt.ylabel('Frequency')
-plt.show()
+plt.savefig('top_openings.png')
+plt.close()
 
 plt.figure(figsize=(10, 6))
 time_control_stats.head(10).plot(kind='bar', title='Time Controls Used')
 plt.xlabel('Time Control')
 plt.ylabel('Frequency')
-plt.show()
+plt.savefig('time_controls.png')
+plt.close()
 
-# Displaying overall performance and additional insights
-print("Overall Performance:\n", results)
-print(f"\nTotal number of games: {len(games_df)}")
-print(f"\nPerformance by Color: White Wins: {white_wins}, Black Wins: {black_wins}, Draws: {draws}")
-print("\nTop 10 Openings:\n", opening_stats.head(10))
-print("\nWin Rate by Opening (Top 5):")
-print("Wins:\n", opening_wins.head(5))
-print("Losses:\n", opening_losses.head(5))
-print("Draws:\n", opening_draws.head(5))
+# Write results to an HTML file
+with open('results.html', 'w') as f:
+    f.write("<h1>Chess Games Analysis</h1>")
+    f.write("<h2>Overall Performance</h2>")
+    f.write(results.to_frame().to_html())
+    f.write(f"<p>Total number of games: {len(games_df)}</p>")
+    f.write(f"<p>Performance by Color: White Wins: {white_wins}, Black Wins: {black_wins}, Draws: {draws}</p>")
+    f.write("<h2>Top 10 Openings</h2>")
+    f.write(opening_stats.head(10).to_frame().to_html())
+    f.write("<h2>Win Rate by Opening (Top 5)</h2>")
+    f.write("<h3>Wins</h3>")
+    f.write(opening_wins.head(5).to_frame().to_html())
+    f.write("<h3>Losses</h3>")
+    f.write(opening_losses.head(5).to_frame().to_html())
+    f.write("<h3>Draws</h3>")
+    f.write(opening_draws.head(5).to_frame().to_html())
 
 # Save dataframe to CSV for further analysis if needed
 games_df.to_csv('parsed_lichess_games.csv', index=False)
