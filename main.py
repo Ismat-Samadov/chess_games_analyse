@@ -45,6 +45,9 @@ games_df = pd.DataFrame(games_data)
 # Convert date to datetime
 games_df['Date'] = pd.to_datetime(games_df['Date'])
 
+# Extract month and year from the date
+games_df['YearMonth'] = games_df['Date'].dt.to_period('M')
+
 # Convert Elo ratings to numeric, errors='coerce' will replace non-numeric values with NaN
 games_df['WhiteElo'] = pd.to_numeric(games_df['WhiteElo'], errors='coerce')
 games_df['BlackElo'] = pd.to_numeric(games_df['BlackElo'], errors='coerce')
@@ -61,16 +64,48 @@ draws = games_df[games_df['Result'] == '1/2-1/2'].shape[0]
 white_rating_change = games_df.groupby('Date')['WhiteElo'].mean()
 black_rating_change = games_df.groupby('Date')['BlackElo'].mean()
 
+# Performance differences by month and year
+performance_by_month = games_df.groupby('YearMonth')['Result'].value_counts().unstack().fillna(0)
+
 # Opening analysis
 opening_stats = games_df['Opening'].value_counts()
 
 # Win rate by opening
-opening_wins = games_df[games_df['Result'] == '1-0']['Opening'].value_counts()
-opening_losses = games_df[games_df['Result'] == '0-1']['Opening'].value_counts()
-opening_draws = games_df[games_df['Result'] == '1/2-1/2']['Opening'].value_counts()
+openings = games_df['Opening'].unique()
+opening_analysis = []
+for opening in openings:
+    total_games = games_df[games_df['Opening'] == opening].shape[0]
+    wins = games_df[(games_df['Opening'] == opening) & (games_df['Result'] == '1-0')].shape[0]
+    losses = games_df[(games_df['Opening'] == opening) & (games_df['Result'] == '0-1')].shape[0]
+    draws = games_df[(games_df['Opening'] == opening) & (games_df['Result'] == '1/2-1/2')].shape[0]
+    opening_analysis.append({
+        'Opening': opening,
+        'Total Games': total_games,
+        'Wins': wins,
+        'Losses': losses,
+        'Draws': draws
+    })
+opening_analysis_df = pd.DataFrame(opening_analysis).sort_values(by='Total Games', ascending=False).reset_index(drop=True)
 
 # Time control analysis
 time_control_stats = games_df['TimeControl'].value_counts()
+
+# Win rate by player
+player_analysis = []
+players = pd.concat([games_df['White'], games_df['Black']]).unique()
+for player in players:
+    total_games = games_df[(games_df['White'] == player) | (games_df['Black'] == player)].shape[0]
+    wins = games_df[(games_df['White'] == player) & (games_df['Result'] == '1-0')].shape[0] + games_df[(games_df['Black'] == player) & (games_df['Result'] == '0-1')].shape[0]
+    losses = games_df[(games_df['White'] == player) & (games_df['Result'] == '0-1')].shape[0] + games_df[(games_df['Black'] == player) & (games_df['Result'] == '1-0')].shape[0]
+    draws = games_df[((games_df['White'] == player) | (games_df['Black'] == player)) & (games_df['Result'] == '1/2-1/2')].shape[0]
+    player_analysis.append({
+        'Player': player,
+        'Total Games': total_games,
+        'Wins': wins,
+        'Losses': losses,
+        'Draws': draws
+    })
+player_analysis_df = pd.DataFrame(player_analysis).sort_values(by='Total Games', ascending=False).reset_index(drop=True)
 
 # Plotting and saving plots
 plt.figure(figsize=(10, 6))
@@ -90,9 +125,11 @@ plt.savefig('rating_changes.png')
 plt.close()
 
 plt.figure(figsize=(10, 6))
-opening_stats.head(10).plot(kind='bar', title='Top 10 Openings')
+ax = opening_stats.head(10).plot(kind='bar', title='Top 10 Openings')
 plt.xlabel('Opening')
 plt.ylabel('Frequency')
+ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+plt.tight_layout()
 plt.savefig('top_openings.png')
 plt.close()
 
@@ -103,6 +140,25 @@ plt.ylabel('Frequency')
 plt.savefig('time_controls.png')
 plt.close()
 
+plt.figure(figsize=(10, 6))
+performance_by_month.plot(kind='line', marker='o')
+plt.title('Performance Over Time')
+plt.xlabel('Month-Year')
+plt.ylabel('Number of Games')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig('performance_over_time.png')
+plt.close()
+
+plt.figure(figsize=(10, 6))
+player_analysis_df.head(10).plot(kind='bar', x='Player', y='Total Games', title='Top 10 Players by Total Games')
+plt.xlabel('Player')
+plt.ylabel('Total Games')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig('top_players.png')
+plt.close()
+
 # Write results to an HTML file
 with open('results.html', 'w') as f:
     f.write("<h1>Chess Games Analysis</h1>")
@@ -110,15 +166,12 @@ with open('results.html', 'w') as f:
     f.write(results.to_frame().to_html())
     f.write(f"<p>Total number of games: {len(games_df)}</p>")
     f.write(f"<p>Performance by Color: White Wins: {white_wins}, Black Wins: {black_wins}, Draws: {draws}</p>")
-    f.write("<h2>Top 10 Openings</h2>")
-    f.write(opening_stats.head(10).to_frame().to_html())
-    f.write("<h2>Win Rate by Opening (Top 5)</h2>")
-    f.write("<h3>Wins</h3>")
-    f.write(opening_wins.head(5).to_frame().to_html())
-    f.write("<h3>Losses</h3>")
-    f.write(opening_losses.head(5).to_frame().to_html())
-    f.write("<h3>Draws</h3>")
-    f.write(opening_draws.head(5).to_frame().to_html())
+    f.write("<h2>Opening Analysis</h2>")
+    f.write(opening_analysis_df.head(10).to_html(index=False))
+    f.write("<h2>Performance Over Time</h2>")
+    f.write(performance_by_month.to_html())
+    f.write("<h2>Top Players by Total Games</h2>")
+    f.write(player_analysis_df.head(10).to_html(index=False))
 
 # Save dataframe to CSV for further analysis if needed
 games_df.to_csv('parsed_lichess_games.csv', index=False)
